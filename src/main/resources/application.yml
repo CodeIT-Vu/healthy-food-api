@@ -16,9 +16,6 @@ app:
     secret: "change-this-to-a-long-random-secret"
     expiration-ms: 86400000
 
-server:
-  port: 8080
-
 springdoc:
   api-docs.path: /v3/api-docs
   swagger-ui.path: /swagger-ui.html
@@ -26,4 +23,7 @@ springdoc:
 logging:
   level:
     org.springframework.security: DEBUG
+
+server:
+  port: ${PORT:8080}
 
