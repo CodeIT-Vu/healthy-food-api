@@ -1,33 +1,21 @@
-# ---------- Stage 1: Build ----------
+# Stage 1: build
 FROM eclipse-temurin:21-jdk AS build
 WORKDIR /app
 
-# Copy Maven wrapper (nếu có) và pom trước để cache dependency
-COPY mvnw mvnw.cmd pom.xml ./
-COPY .mvn .mvn
+# copy file cấu hình maven trước để cache dependency
+COPY pom.xml .
+RUN apt-get update && apt-get install -y maven
+RUN mvn dependency:go-offline -B
 
-# tải dependency để tận dụng cache docker
-RUN ./mvnw -q -e -DskipTests dependency:go-offline
-
-# copy source và build
+# copy source code
 COPY src src
-RUN ./mvnw -q -DskipTests clean package
 
-# ---------- Stage 2: Run ----------
+# build project
+RUN mvn clean package -DskipTests
+
+# Stage 2: runtime
 FROM eclipse-temurin:21-jre
 WORKDIR /app
+COPY --from=build /app/target/*.jar app.jar
 
-# Copy jar từ stage build
-# Tự động tìm file jar duy nhất trong target
-COPY --from=build /app/target/*.jar /app/app.jar
-
-# JVM tối ưu cho RAM nhỏ (Render Free 512MB)
-ENV JAVA_TOOL_OPTIONS="-XX:MaxRAMPercentage=75 -XX:InitialRAMPercentage=25 -XX:+UseContainerSupport"
-# Kích hoạt profile production nếu cần
-ENV SPRING_PROFILES_ACTIVE=prod
-
-# Render cấp biến PORT động -> Spring Boot đọc từ PORT nếu có
-# (nhớ thêm cấu hình ở application.yml: server.port=${PORT:8080})
-EXPOSE 8080
-
-ENTRYPOINT ["java","-jar","/app/app.jar"]
+ENTRYPOINT ["java","-jar","app.jar"]
